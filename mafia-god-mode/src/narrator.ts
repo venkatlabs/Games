@@ -7,33 +7,36 @@ import { Ambience, type Mood, type Sting } from "./audio";
 
 export const speechSupported = typeof window !== "undefined" && "speechSynthesis" in window;
 
-// Fixed narrator style, chosen by ear: UK male voice, normal speed, lowest pitch, music at 60%.
+// Narrator style. The default is a warm Indian female voice (en-IN, or the language's own voice for Hindi, Tamil
+// and Telugu). If the device has no such voice, English falls back to the deep UK male voice it was tuned with before.
 const RATE = 1;
-const PITCH = 0.5;
 const MUSIC_VOL = 0.6;
+const DEEP_MALE = /google uk english male|daniel|arthur|oliver|alex|fred|aaron|guy|ryan|davis|james|thomas|rishi|lee|male(?!.*female)|madhur|valluvar|prabhat|hemant|ravi/i;
+const FEMALE = /female|neerja|heera|veena|lekha|swara|kalpana|pallavi|shruti|aditi|raveena|priya|zira|samantha|karen|moira|tessa|susan|hazel|jenny|aria|sonia/i;
+/** Deep male voices sound best at the lowest pitch; the female default sounds best untouched. */
+export const pitchFor = (voice?: SpeechSynthesisVoice) => (voice && DEEP_MALE.test(voice.name) && !FEMALE.test(voice.name) ? 0.5 : 1);
 
-/** The best voice for a language. English prefers a deep UK male voice, the way the narrator was tuned; other languages take the best match. */
+/** The best voice for a language: a natural-sounding Indian female voice first, then the best match the device has. */
 export function bestVoice(voices: SpeechSynthesisVoice[], lang: Lang = "en"): SpeechSynthesisVoice | undefined {
   const base = LANGS.find((l) => l.id === lang)?.bcp47.slice(0, 2) ?? "en";
-  const pool = voices.filter((v) => v.lang.toLowerCase().startsWith(base));
-  if (!pool.length) return lang === "en" ? undefined : undefined;
-  if (lang === "en") {
-    const uk = pool.find((v) => /google uk english male/i.test(v.name));
-    if (uk) return uk;
-  }
+  const pool = voices.filter((v) => v.lang.toLowerCase().replace("_", "-").startsWith(base));
+  if (!pool.length) return undefined;
   const score = (v: SpeechSynthesisVoice) => {
     const n = v.name.toLowerCase();
+    const tag = v.lang.toLowerCase().replace("_", "-");
     let sc = 0;
-    if (/natural|neural|premium|enhanced|siri|studio|google/.test(n)) sc += 50;
+    if (/natural|neural|online|premium|enhanced|studio|google/.test(n)) sc += 30;
+    if (FEMALE.test(n)) sc += 40;
     if (lang === "en") {
-      if (/daniel|arthur|oliver|alex|fred|aaron|guy|ryan|davis|james|thomas|rishi|lee/.test(n)) sc += 25;
-      if (/female|zira|samantha|karen|moira|tessa|susan|hazel|jenny|aria/.test(n)) sc -= 8;
-      if (v.lang === "en-GB") sc += 8;
-    } else if (/male(?!.*female)|madhur|valluvar|prabhat|hemant|ravi/.test(n)) sc += 10;
+      if (tag === "en-in") sc += 60; // the Indian-English voices
+      else if (/google uk english male/.test(n)) sc += 45; // the earlier default, as the fallback
+      else if (tag === "en-gb") sc += 6;
+      if (DEEP_MALE.test(n) && !FEMALE.test(n)) sc -= 10;
+    }
     if (v.localService) sc += 2;
     return sc;
   };
-  return [...pool].sort((a, b) => score(b) - score(a))[0];
+  return [...pool].sort((x, y) => score(y) - score(x))[0];
 }
 
 /**
@@ -142,7 +145,7 @@ export function useNarrator(view: ClientView | null) {
         if (voice) u.voice = voice;
         u.lang = voice?.lang ?? bcp47;
         u.rate = RATE;
-        u.pitch = PITCH;
+        u.pitch = pitchFor(voice);
         u.volume = 1;
         u.onend = after;
         u.onerror = after;

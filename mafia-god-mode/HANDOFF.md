@@ -87,3 +87,6 @@ The chat box is rendered in `PlayerScreen` as a sibling after the phase body (`P
 ## Moderator screen and vote log
 - "Host on this TV or laptop (not playing)" on the home screen creates a room whose `moderatorId` is the screen's token. Nobody is a player or host; the screen can change settings, add bots, admit people, start, skip ahead and replay. Players never see Start. The host role never moves to a player (`refreshHost` returns early).
 - Every closed vote is listed in `view.vote.log` (round, stage, who voted for whom, outcome). Phones get a "Votes" chip that opens it; the TV shows it as a side panel. It is cleared on rematch (it is derived from `history`).
+
+## Narrator voice
+- Default is now a female Indian voice (en-IN, e.g. Microsoft Neerja; Hindi/Tamil/Telugu use their own voices, females preferred), pitch 1. If the device has no en-IN voice, English falls back to Google UK English Male at pitch 0.5 (the earlier setting). Real-singer voices (Chinmayi, Shreya Ghoshal) are not possible with browser voices and are not cloned.
